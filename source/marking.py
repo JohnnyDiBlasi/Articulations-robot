@@ -113,6 +113,25 @@ def main():
     print("pos_status: ", pos_status)
     sleep(1)
 
+    # === INITIALIZE SERIAL COMMUNICATION WITH ARDUINO ===
+    # syringe_pump_serial = serial_connect("/dev/cu.usbmodem1441201", 19200, timeout=10)
+    syringe_pump_serial = serial_connect("/dev/cu.usbmodem201", 19200, timeout=10)
+    syringe_pump_serial.reset_output_buffer()
+
+    # Serial Reader Thread
+    class SerialReaderThread(threading.Thread):
+        def run(self):
+            while True:
+                # Read output from ser
+                output = syringe_pump_serial.readline().decode("ascii")
+                print(output)
+    
+    serial_reader = SerialReaderThread()
+    serial_reader.start()
+
+    # Put the Stepper to SLEEP:
+    syringe_pump_serial.write(b"S\n")
+
     # === COORDINATES & AMOUNTS ===
     # paint brush tip location coords (for the pipette: y should be -127 or less)
     tip_coords = (
@@ -291,6 +310,59 @@ def main():
                     timeout=30,
                     wait=True,
                 )
+                # current brush/pen location
+                swift.set_position(
+                    z=tip_coords[tip_idx][2] + 19, speed=20, timeout=30, wait=True
+                )
+                # acquire brush
+                swift.set_position(
+                    z=tip_coords[tip_idx][2] + 9, speed=2, wait=True
+                )
+                # acquire brush... slowly
+                swift.set_position(
+                    z=tip_coords[tip_idx][2] + 4, speed=2, timeout=30, wait=True
+                )
+                # acquire bursh
+                swift.set_position(
+                    z=tip_coords[tip_idx][2], speed=1, timeout=30, wait=True
+                )
+                # acquire brush... got it
+                sleep(1)
+                swift.set_position(
+                    z=tip_coords[tip_idx]][2] + 60, speed=2, timeout=30, wait=True
+                )
+                # go back up
+                sleep(0.1)
+                swift.set_position(z=35.24, speed=50, timeout=30, wait=True)
+                sleep(1)
+
+                # increment brush location
+                tip_idx += 1
+
+                # move arm to location of mark making selected by RL controller
+                curr_solution_loc = black["fast-thin"][0]["location"]
+                print("moving black paint to make mark on canvas")
+                swift.set_position(
+                    x=curr_solution_loc[0],
+                    y=curr_solution_loc[1], 
+                    z=40,
+                    speed=200,
+                    timeout=30,
+                    wait=True,
+                )
+                # current paint - black or green
+                swift.set_position(z=curr_solution_loc[2] + 19, speed=20, timeout=30, wait=True)
+                swift.set_position(z=curr_solution_loc[2] + 9, speed=3, timeout=30, wait=True)
+                swift.set_position(
+                    z=curr_solution_loc[2] + 4, speed=3, timeout=30, wait=True
+                )
+                # get closer
+                swift.set_position(
+                    z=curr_solution_loc[2], speed=3, timeout=30, wait=True
+                )
+                # To DO: need to CONTROL the BRUSH Gripper
+                # extract paint
+                syringe_pump_serial.write(b"s\n")
 
 
 
