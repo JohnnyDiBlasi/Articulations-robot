@@ -200,7 +200,7 @@ def main():
     canvas_coords = ((265, 0, -17), (266, 0, -17))
 
     # Trash location 
-    trash_coords = (270, -175, 50)
+    holder_coords = (270, -175, 50)
 
     # === LOAD WORLD MODEL ===
     print("loading world model...")
@@ -360,9 +360,127 @@ def main():
                 swift.set_position(
                     z=curr_solution_loc[2], speed=3, timeout=30, wait=True
                 )
+                # ease in
                 # To DO: need to CONTROL the BRUSH Gripper
                 # extract paint
+                # take the steppers out of sleep mode
                 syringe_pump_serial.write(b"s\n")
+                sleep(1)
+                syringe_pump_serial.write(b"+\n")
+                sleep(3)
+
+                # go back up
+                swift.set_position(
+                    z=curr_solution_loc[2] + 60, speed=3, timeout=30, wait=True
+                )
+                #sleep(0.1)
+                #swift.set_position(z=30, speed=20, timeout=30, wait=True)
+                sleep(1)
+
+                # move arm to location on canvas (that you get from RL Controller)
+                print("making a mark with black/green paint...")
+                swift.set_position(
+                    x=canvas_coords[0][0], 
+                    y=canvas_coords[0][1], 
+                    z=5, 
+                    speed=20,
+                    timeout=30,
+                    wait=True,
+                )
+                # current canvas location
+                swift.set_position(z=canvas_coords[0][2] + 19, speed=20, timeout=30, wait=True)
+                swift.set_position(z=canvas_coords[0][2] + 9, speed=3, timeout=30, wait=True)
+                # get closer
+                swift.set_position(
+                    z=canvas_coords[0][2] + 4, speed=3, timeout=30, wait=True
+                )
+                # get ready to paint
+                swift.set_position(
+                    z=canvas_coords[0][2], speed=3, timeout=30, wait=True
+                )
+
+                # TO DO - need to control the syringe pump stepper
+                # dispense paint (actually no - this is left over from Beauty)
+                # dispense - change to draw or line from a to b
+                syringe_pump_serial.write(b"-\n")
+                sleep(3)
+
+                # go back up
+                swift.set_position(
+                    z=canvas_coords[0][2] + 40, speed=3, timeout=30, wait=True
+                )
+                sleep(0.1)
+                # go back up
+                swift.set_position(z=25, speed=20, timeout=30, wait=True)
+                sleep(1)
+
+                # move arm to brush/pen holder
+                swift.set_position(
+                    x=holder_coords[0], 
+                    y=holder_coords[1],
+                    z=holder_coords[2],
+                    speed=50,
+                    timeout=30,
+                    wait=True
+                )
+                # current holder location
+                swift.set_position(z=holder_coords[2] + 9, speed=20, timeout=30, wait=True)
+                swift.set_position(z=holder_coords[2], speed=5, timeout=30, wait=True)
+
+                # TO DO - connect gripper to servo
+                # place pen down
+                swift.set_wrist(0, wait=True)
+                sleep(1)
+                swift.set_wrist(90, wait=True)
+                sleep(1)
+                # go back
+                swift.set_position(z=50, speed=20, timeout=30, wait=True)
+                sleep(1)
+
+                # go back to home position
+                print("moving arm back to home position...")
+                # Home
+                swift.set_position(*HOME, speed=50, wait=True)
+
+                print("dispensing soil remediation solution...")
+                # if image is considered more beautiful to the AI than the previous image
+                # then send solution via the soil stepper
+                # SOIL Mode on
+                syringe_pump_serial.write(b"L\n")
+                sleep(0.1)
+                # Dispense
+                syringe_pump_serial.write(b"+\n")
+                sleep(3)
+                # SOIL Mode off
+                syringe_pump_serial.write(b"l\n")
+                sleep(0.1)
+
+                # put the steppers back to sleep mode
+                syringe_pump_serial.write(b"S\n")
+
+                # detach the uArm stepper motors
+                #print("putting the uArm to sleep...")
+                #swift.send_cmd_sync("M2019")
+
+                print("Done. Waiting for next action...")
+                cv2.putText(img, "Done. Waiting for nrext action", (10, 550), font, 1, (255, 255, 0), 1, cv2.LINE_AA)
+
+                # attach the uArm stepper motors
+                # print("waking up the uArm...")
+                # swift.send_cmd_sync("M17")
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == 27:
+                break
+
+        cv2.destroyAllWindows()
+    finally:
+        # clean up
+        camera.exit()
+        print("done")
+        return 0
+                
+
 
 
 
